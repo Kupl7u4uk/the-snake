@@ -50,7 +50,7 @@ clock = pg.time.Clock()
 class GameObject:
     """Базовый класс для всех игровых объектов."""
 
-    def __init__(self, color):
+    def __init__(self, color=None):
         """Инициализация игрового объекта."""
         self.position = CENTER_POSITION
         self.body_color = color
@@ -73,7 +73,7 @@ class GameObject:
 class Apple(GameObject):
     """Яблоко, появляющееся в случайной клетке игрового поля."""
 
-    def __init__(self, occupied_positions, color=APPLE_COLOR):
+    def __init__(self, occupied_positions=(), color=APPLE_COLOR):
         """Инициализация цвета и положения яблока."""
         super().__init__(color)
         self.randomize_position(occupied_positions)
@@ -145,7 +145,8 @@ def handle_keys(snake):
         if event.type == pg.QUIT:
             pg.quit()
             raise SystemExit
-        if event.type == pg.KEYDOWN:  # Ниже, до main() воспользовался подсказками ИИ
+        # Ниже, до main() воспользовался подсказками ИИ
+        if event.type == pg.KEYDOWN:
             if event.key == pg.K_ESCAPE:
                 pg.quit()
                 raise SystemExit
@@ -173,6 +174,9 @@ def main():
         head_position = snake.get_head_position()
         if head_position == apple.position:
             snake.length += 1
+            if snake.length is not None:
+                snake.positions.append(snake.last)
+                snake.last = None
             if snake.length == GRID_WIDTH * GRID_HEIGHT:
                 snake.reset()
                 screen.fill(BOARD_BACKGROUND_COLOR)
