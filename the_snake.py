@@ -1,4 +1,4 @@
-from random import choice, randint
+from random import choice
 
 import pygame as pg
 
@@ -7,6 +7,10 @@ SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
 GRID_SIZE = 20
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
+ALL_CElLS = {
+    (x * GRID_SIZE, y * GRID_SIZE)
+    for x in range(GRID_WIDTH) for y in range(GRID_HEIGHT)
+}
 CENTER_POSITION = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
 
 # Направления движения:
@@ -21,11 +25,15 @@ OPPOSITE_DIRECTIONS = {
     LEFT: RIGHT,
     RIGHT: LEFT
 }
-KEY_TO_DIRECTION = {
+KEYS_TO_DIRECTION = {
     pg.K_UP: UP,
     pg.K_DOWN: DOWN,
     pg.K_LEFT: LEFT,
-    pg.K_RIGHT: RIGHT
+    pg.K_RIGHT: RIGHT,
+    pg.K_w: UP,
+    pg.K_s: DOWN,
+    pg.K_a: LEFT,
+    pg.K_d: RIGHT
 }
 
 BOARD_BACKGROUND_COLOR = (220, 220, 220)
@@ -40,7 +48,7 @@ SPEED = 20
 screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
 
 # Заголовок окна игрового поля:
-pg.display.set_caption('Змейка | Стрелки - управление | ESC - выход')
+pg.display.set_caption('Змейка | Стрелки или WASD - управление | ESC - выход')
 
 # Настройка времени:
 clock = pg.time.Clock()
@@ -57,7 +65,7 @@ class GameObject:
     def draw_cell(self, position, color=None):
         """Отрисовка клетки игрового поля."""
         rect = pg.Rect(position, (GRID_SIZE, GRID_SIZE))
-        cell_color = self.body_color if color is None else color
+        cell_color = color or self.body_color
         pg.draw.rect(screen, cell_color, rect)
         if cell_color != BOARD_BACKGROUND_COLOR:
             pg.draw.rect(screen, BORDER_COLOR, rect, 1)
@@ -79,13 +87,7 @@ class Apple(GameObject):
 
     def randomize_position(self, occupied_positions):
         """Рандомизация положения яблока."""
-        while True:
-            self.position = (
-                randint(0, GRID_WIDTH - 1) * GRID_SIZE,
-                randint(0, GRID_HEIGHT - 1) * GRID_SIZE,
-            )
-            if self.position not in occupied_positions:
-                break
+        self.position = choice(tuple(ALL_CElLS - set(occupied_positions)))
 
     def draw(self):
         """Отрисовка яблока."""
@@ -98,7 +100,7 @@ class Snake(GameObject):
     def __init__(self, color=SNAKE_COLOR):
         """Инициализация змейки на старте игры."""
         super().__init__(color)
-        self.reset()
+        self.reset(RIGHT)
 
     def update_direction(self, new_direction):
         """Обновление направления движения змейки."""
@@ -123,16 +125,19 @@ class Snake(GameObject):
             self.positions.pop() if len(self.positions) > self.length else None
         )
 
-    def reset(self):
+    def reset(self, direction=None):
         """Возвращение змейки в исходную позицию"""
         self.length = 1
         self.positions = [CENTER_POSITION]
-        self.direction = choice([UP, DOWN, LEFT, RIGHT])
+        self.direction = (
+            direction if direction is not None
+            else choice([UP, DOWN, LEFT, RIGHT])
+        )
         self.last = None
 
     def draw(self):
         """Отрисовка змейки."""
-        if self.last and self.last not in self.positions:
+        if self.last:
             self.draw_cell(self.last, BOARD_BACKGROUND_COLOR)
         self.draw_cell(self.get_head_position())
 
@@ -141,15 +146,13 @@ def handle_keys(snake):
     """Обработка закрытия окна и нажатия клавиш."""
     direction_changed = False
     for event in pg.event.get():
-        if event.type == pg.QUIT:
+        if event.type == pg.QUIT or (
+                event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE
+        ):
             pg.quit()
             raise SystemExit
-        # Ниже, до main() воспользовался подсказками ИИ
-        if event.type == pg.KEYDOWN:
-            if event.key == pg.K_ESCAPE:
-                pg.quit()
-                raise SystemExit
-            new_directions = KEY_TO_DIRECTION.get(event.key)
+        if event.type == pg.KEYDOWN:  # Ниже, до main() воспользовался подсказками ИИ
+            new_directions = KEYS_TO_DIRECTION.get(event.key)
             if new_directions and not direction_changed:
                 old_direction = snake.direction
                 snake.update_direction(new_directions)
@@ -173,18 +176,16 @@ def main():
         head_position = snake.get_head_position()
         if head_position == apple.position:
             snake.length += 1
-            if snake.length is not None:
-                snake.positions.append(snake.last)
-                snake.last = None
+            snake.positions.append(snake.last)
+            snake.last = None
             if snake.length == GRID_WIDTH * GRID_HEIGHT:
                 snake.reset()
                 screen.fill(BOARD_BACKGROUND_COLOR)
             apple.randomize_position(snake.positions)
-        elif head_position in snake.positions[1:]:
+        elif head_position in snake.positions[4:]:
             snake.reset()
             screen.fill(BOARD_BACKGROUND_COLOR)
-            if apple.position in snake.positions:
-                apple.randomize_position(snake.positions)
+            apple.randomize_position(snake.positions)
 
         snake.draw()
         apple.draw()
