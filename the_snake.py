@@ -151,7 +151,7 @@ def handle_keys(snake):
         ):
             pg.quit()
             raise SystemExit
-        if event.type == pg.KEYDOWN:  # Ниже, до main() воспользовался подсказками ИИ
+        if event.type == pg.KEYDOWN:
             new_directions = KEYS_TO_DIRECTION.get(event.key)
             if new_directions and not direction_changed:
                 old_direction = snake.direction
